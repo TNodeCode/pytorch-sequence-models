@@ -1,10 +1,10 @@
 # PyTorch Sequence Models
 
-This repoitory provides models for training deep neural networks on sequential data.
+This repository provides models for training deep neural networks on sequential data.
 
 ## Sequence to Sequence Modelling with RNNs
 
-This repository provides an encoder-decoder RNN model that can be used for sequence-to-sequence modelling. Typical use cases are:
+You can use this repository for training an encoder-decoder RNN model that can be used for sequence-to-sequence modelling. Typical use cases are:
 
 - Machine translation
 - Text summarization
