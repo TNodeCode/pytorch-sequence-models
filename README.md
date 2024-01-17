@@ -33,9 +33,9 @@ device = "cuda" if torch.cuda.device_count() else "cpu"
 3. Set hyperparameters
 
 ```python
-lr = 1e-3                   # The learning rate of the model
+lr=1e-3                     # The learning rate of the model
 cell_type=CellType.LSTM     # Cell type (LSTM | GRU | RNN)
-n_epochs = 10               # Number of epochs
+n_epochs=10                 # Number of epochs
 num_layers=2                # Number of RNN layers
 embedding_dim=32            # Embedding dimension
 hidden_size=32              # Hidden size of the RNN layers
