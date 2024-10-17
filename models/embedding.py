@@ -13,7 +13,7 @@ class EmbeddingType:
     def embedding_layer(embedding_type):
         embedding_types = {
             "none": None,
-            "sine_cosine": SineCosineEmbedding,
+            "sine_cosine": SineCosineEncoding,
             "pos_learned": LearnedPositionEmbedding,
         }
         return embedding_types[embedding_type]
