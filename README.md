@@ -1,10 +1,10 @@
 # PyTorch Sequence Models
 
-This repoitory provides models for training deep neural networks on sequential data.
+This repository provides models for training deep neural networks on sequential data.
 
 ## Sequence to Sequence Modelling with RNNs
 
-This repository provides an encoder-decoder RNN model that can be used for sequence-to-sequence modelling. Typical use cases are:
+You can use this repository for training an encoder-decoder RNN model that can be used for sequence-to-sequence modelling. Typical use cases are:
 
 - Machine translation
 - Text summarization
@@ -33,9 +33,9 @@ device = "cuda" if torch.cuda.device_count() else "cpu"
 3. Set hyperparameters
 
 ```python
-lr = 1e-3                   # The learning rate of the model
+lr=1e-3                     # The learning rate of the model
 cell_type=CellType.LSTM     # Cell type (LSTM | GRU | RNN)
-n_epochs = 10               # Number of epochs
+n_epochs=10                 # Number of epochs
 num_layers=2                # Number of RNN layers
 embedding_dim=32            # Embedding dimension
 hidden_size=32              # Hidden size of the RNN layers
