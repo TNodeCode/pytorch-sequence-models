@@ -45,7 +45,7 @@ class SineCosineEncoding(nn.Module):
         return self.pe[:self.max_length]
 
 
-class SineCosineEmbedding(nn.Module):
+class PositionEncodingEmbedding(nn.Module):
     """
     Module that creates an embedding by adding the word embedding and the sine-cosine position encoding
     """
