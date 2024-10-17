@@ -13,8 +13,8 @@ class NPZSequencesDataset(Dataset):
         """
         self.source_seqs = np.load(input_seqs_filename)[key][:, :max_length]
         self.target_seqs = np.load(output_seqs_filename)[key][:, :max_length]
-        self.vocab_in_size = self.source_seqs.max()
-        self.vocab_out_size = self.target_seqs.max()
+        self.vocab_in_size = self.source_seqs.max() + 1
+        self.vocab_out_size = self.target_seqs.max() + 1
         if self.source_seqs.shape[0] != self.target_seqs.shape[0]:
             raise Exception("Number of samples of source and target sequences must be equal")
 
