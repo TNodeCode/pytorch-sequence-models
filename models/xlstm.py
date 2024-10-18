@@ -6,19 +6,19 @@ from models.classifier import *
 
 
 class BlockDiagonal(nn.Module):
-    def __init__(self, in_features, out_features, num_blocks, bias=True):
+    def __init__(self, in_features, out_features, num_layers, bias=True):
         super(BlockDiagonal, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.num_blocks = num_blocks
+        self.num_layers = num_layers
 
-        assert out_features % num_blocks == 0
+        assert out_features % num_layers == 0
         
-        block_out_features = out_features // num_blocks
+        block_out_features = out_features // num_layers
         
         self.blocks = nn.ModuleList([
             nn.Linear(in_features, block_out_features, bias=bias)
-            for _ in range(num_blocks)
+            for _ in range(num_layers)
         ])
         
     def forward(self, x):
@@ -39,7 +39,7 @@ class CausalConv1D(nn.Module):
 
 
 class sLSTMblock(nn.Module):
-    def __init__(self, input_size, embedding_dim, depth, dropout=0.2, device='cuda'):
+    def __init__(self, input_size, embedding_dim, num_layers, dropout=0.2, device='cuda'):
         super().__init__()
         self.device = device
         self.input_size = input_size
@@ -50,15 +50,15 @@ class sLSTMblock(nn.Module):
         self.conv = CausalConv1D(self.input_size, self.input_size, int(self.input_size/8))
         self.drop = nn.Dropout(dropout)
         
-        self.i_gate = BlockDiagonal(self.input_size, self.input_size, depth)
-        self.f_gate = BlockDiagonal(self.input_size, self.input_size, depth)
-        self.o_gate = BlockDiagonal(self.input_size, self.input_size, depth)
-        self.z_gate = BlockDiagonal(self.input_size, self.input_size, depth)
+        self.i_gate = BlockDiagonal(self.input_size, self.input_size, num_layers)
+        self.f_gate = BlockDiagonal(self.input_size, self.input_size, num_layers)
+        self.o_gate = BlockDiagonal(self.input_size, self.input_size, num_layers)
+        self.z_gate = BlockDiagonal(self.input_size, self.input_size, num_layers)
         
-        self.ri_gate = BlockDiagonal(self.input_size, self.input_size, depth, bias=False)
-        self.rf_gate = BlockDiagonal(self.input_size, self.input_size, depth, bias=False)
-        self.ro_gate = BlockDiagonal(self.input_size, self.input_size, depth, bias=False)
-        self.rz_gate = BlockDiagonal(self.input_size, self.input_size, depth, bias=False)
+        self.ri_gate = BlockDiagonal(self.input_size, self.input_size, num_layers, bias=False)
+        self.rf_gate = BlockDiagonal(self.input_size, self.input_size, num_layers, bias=False)
+        self.ro_gate = BlockDiagonal(self.input_size, self.input_size, num_layers, bias=False)
+        self.rz_gate = BlockDiagonal(self.input_size, self.input_size, num_layers, bias=False)
 
         self.ln_i = nn.LayerNorm(self.input_size)
         self.ln_f = nn.LayerNorm(self.input_size)
@@ -130,7 +130,7 @@ class sLSTMblock(nn.Module):
 
 
 class mLSTMblock(nn.Module):
-    def __init__(self, embedding_dim, factor, depth, dropout=0.2, device='cuda'):
+    def __init__(self, embedding_dim, factor, num_layers, dropout=0.2, device='cuda'):
         super().__init__()
         self.device = device
         self.embedding_dim = embedding_dim
@@ -146,9 +146,9 @@ class mLSTMblock(nn.Module):
         
         self.lskip = nn.Linear(self.hidden_size, self.hidden_size)
         
-        self.wq = BlockDiagonal(self.hidden_size, self.hidden_size, depth)
-        self.wk = BlockDiagonal(self.hidden_size, self.hidden_size, depth)
-        self.wv = BlockDiagonal(self.hidden_size, self.hidden_size, depth)
+        self.wq = BlockDiagonal(self.hidden_size, self.hidden_size, num_layers)
+        self.wk = BlockDiagonal(self.hidden_size, self.hidden_size, num_layers)
+        self.wv = BlockDiagonal(self.hidden_size, self.hidden_size, num_layers)
         self.dropq = nn.Dropout(dropout/2)
         self.dropk = nn.Dropout(dropout/2)
         self.dropv = nn.Dropout(dropout/2)
@@ -222,7 +222,7 @@ class mLSTMblock(nn.Module):
     
 
 class xLSTM(nn.Module):
-    def __init__(self, layers, input_size, embedding_dim, depth=4, factor=2, device='cuda'):
+    def __init__(self, layers, input_size, embedding_dim, num_layers=4, factor=2, device='cuda'):
         super(xLSTM, self).__init__()
 
         self.device = device
@@ -232,14 +232,14 @@ class xLSTM(nn.Module):
                 layer = sLSTMblock(
                     input_size=input_size,
                     embedding_dim=embedding_dim,
-                    depth=depth,
+                    num_layers=num_layers,
                     device=device
                 )
             elif layer_type == 'm':
                 layer = mLSTMblock(
                     embedding_dim=embedding_dim,
                     factor=factor,
-                    depth=depth,
+                    num_layers=num_layers,
                     device=device
                 )
             else:
@@ -268,6 +268,8 @@ class XTransformer(nn.Module):
             config_layers,
             device,
             max_length,
+            num_layers,
+            factor=2,
     ):
         super().__init__()
         self.embedding_type = embedding_type
@@ -286,8 +288,8 @@ class XTransformer(nn.Module):
             layers=config_layers,
             input_size=max_length,
             embedding_dim=self.embedding_dim,
-            depth=4,
-            factor=2,
+            num_layers=num_layers,
+            factor=factor,
             device=device,
         )
         
@@ -305,13 +307,7 @@ class XTransformer(nn.Module):
         B, T = idx.shape
 
         # idx and targets are both (B,T) tensor of integers
-        try:
-          tok_emb = self.token_embedding_table(idx) # (B,T,C)
-        except IndexError as e:
-          print("IDX", idx)
-          print("MIN", idx.min(), "MAX", idx.max())
-          print(self.token_embedding_table)
-          raise e
+        tok_emb = self.token_embedding_table(idx) # (B,T,C)
         pos_emb = self.position_embedding_table(torch.arange(T, device=self.device)) # T, C
 
         x = tok_emb + pos_emb # (B, T, C)
