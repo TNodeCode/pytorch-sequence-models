@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import random
-from models.attention import *
-from models.classifier import *
+from models.attention import AttentionType, concat_hidden_states
+from models.classifier import Classifier
 
     
 class CellType:

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from models.embedding import *
-from models.classifier import *
+from models.embedding import EmbeddingType
+from models.classifier import Classifier
 
 
 class PyTorchTransformer(nn.Module):
