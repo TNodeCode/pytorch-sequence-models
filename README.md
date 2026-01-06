@@ -6,6 +6,7 @@ This repository provides models for training deep neural networks on sequential 
 
 - RNN-based sequence-to-sequence models (LSTM, GRU, RNN)
 - Transformer models (Encoder, Decoder, Encoder-Decoder)
+- **Mamba models** - State-space models with selective mechanisms for efficient sequence modeling
 - **HuggingFace Datasets integration** - Use datasets from the HuggingFace Hub with the models in this repository
 - Custom dataset classes for text classification compatible with HuggingFace
 
@@ -86,6 +87,67 @@ predictor.train(
     lr=lr,
 )
 ```
+
+## Mamba Models
+
+The repository includes Mamba models, which use selective state space models (SSMs) for efficient sequence modeling. Mamba models offer an alternative to Transformers with linear-time complexity.
+
+### Using Mamba for Sequence Classification
+
+```python
+import torch
+from models.embedding import EmbeddingType
+from models.mamba import MambaEncoder
+from torch.utils.data import DataLoader
+
+# Set up device
+device = "cuda" if torch.cuda.device_count() else "cpu"
+
+# Create Mamba model
+model = MambaEncoder(
+    embedding_type=EmbeddingType.POS_LEARNED,
+    src_vocab_size=vocab_size_src,
+    trg_vocab_size=vocab_size_trg,
+    embedding_dim=64,
+    d_state=16,          # State dimension for SSM
+    d_conv=4,            # Convolution kernel size
+    expand_factor=2,     # Expansion factor for hidden dimension
+    num_layers=4,        # Number of Mamba blocks
+    dropout=0.1,
+    device=device,
+    max_length=512
+).to(device)
+
+# Train the model
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+criterion = torch.nn.NLLLoss()
+
+for epoch in range(num_epochs):
+    for src, trg in dataloader:
+        src, trg = src.to(device), trg.to(device)
+        
+        # Forward pass
+        output = model(src)
+        
+        # Calculate loss
+        loss = criterion(output.view(-1, vocab_size_trg), trg.view(-1))
+        
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+```
+
+### Mamba Model Features
+
+- **Selective SSM**: State-space models with input-dependent parameters
+- **Linear Complexity**: More efficient than quadratic attention for long sequences
+- **Causal Convolution**: Temporal mixing with causal masking
+- **Plain PyTorch**: Implemented using only PyTorch primitives
+
+### Example Notebook
+
+See the `Mamba Training.ipynb` notebook for a complete example of training a Mamba model.
 
 ## HuggingFace Datasets Integration
 
