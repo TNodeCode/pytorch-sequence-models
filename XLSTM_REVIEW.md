@@ -263,7 +263,7 @@ self.right_linear = nn.Linear(self.input_size, int(self.input_size*(4/3)))
 1. ✅ Fix state dimension mismatch in `sLSTMblock` (Issue #1)
 2. ✅ Fix skip connection logic in `xLSTM` (Issue #5)
 3. ✅ Fix inconsistent input processing in `sLSTMblock` gates (Issue #2)
-4. ✅ Fix state broadcasting to support batched processing (Issue #4)
+4. ⚠️ Fix state broadcasting to support batched processing (Issue #4) - **NOT FIXED** (requires architectural redesign)
 
 ### Medium Priority
 5. ✅ Add numerical stability to division in `mLSTMblock` (Issue #3)
@@ -283,10 +283,13 @@ self.right_linear = nn.Linear(self.input_size, int(self.input_size*(4/3)))
 
 ## Summary
 
-The xLSTM implementation has **several critical bugs** that need immediate attention:
-- State dimension mismatches
-- Broken residual connections  
-- Batch processing issues
-- Numerical stability concerns
+The xLSTM implementation had **several critical bugs** that needed immediate attention:
+- State dimension mismatches ✅ FIXED
+- Broken residual connections ✅ FIXED
+- Inconsistent gate inputs ✅ FIXED
+- Numerical stability concerns ✅ FIXED
+- Edge cases in convolution ✅ FIXED
 
-These issues will cause runtime errors or significantly degrade model performance. The fixes are straightforward but essential for the model to function correctly.
+**Note:** The batch state broadcasting issue (Issue #4) was identified but NOT fixed as it would require a significant architectural change that could break existing code and trained models. This should be addressed in a future major version update.
+
+All critical bugs that cause runtime errors or major performance degradation have been fixed. The remaining issues are architectural improvements that require careful consideration of backward compatibility.

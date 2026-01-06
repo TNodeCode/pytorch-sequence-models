@@ -211,7 +211,7 @@ class mLSTMblock(nn.Module):
         nt =torch.mean( self.ln_n(nt), [0, 1], keepdim=True)
         self.nt_1 = nt.detach()
         
-        ht = o * ((ct*q) / torch.max(torch.abs(nt*q) + 1e-6, dim=-1, keepdim=True)[0])
+        ht = o * ((ct*q) / (torch.max(torch.abs(nt*q), dim=-1, keepdim=True)[0] + 1e-6))
         # end mLSTM
         ht = ht
         
@@ -254,7 +254,8 @@ class xLSTM(nn.Module):
     def forward(self, x):
         # Run through layers with residual connections
         for l in self.layers:
-            x = l(x) + x
+            residual = x
+            x = l(x) + residual
         return x
     
 
