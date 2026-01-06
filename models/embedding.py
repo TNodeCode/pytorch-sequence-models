@@ -13,7 +13,7 @@ class EmbeddingType:
     def embedding_layer(embedding_type):
         embedding_types = {
             "none": None,
-            "sine_cosine": SineCosineEncoding,
+            "sine_cosine": PositionEncodingEmbedding,
             "pos_learned": LearnedPositionEmbedding,
         }
         return embedding_types[embedding_type]
@@ -30,6 +30,7 @@ class SineCosineEncoding(nn.Module):
             max_length: int = 5000
         ):
         super().__init__()
+        self.max_length = max_length
         position = torch.arange(max_length).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, embedding_dim, 2) * (-math.log(10000.0) / embedding_dim))
         pe = torch.zeros(max_length, 1, embedding_dim)
@@ -37,12 +38,17 @@ class SineCosineEncoding(nn.Module):
         pe[:, 0, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pe', pe)
 
-    def forward(self) -> torch.Tensor:
+    def forward(self, seq_len: int = None) -> torch.Tensor:
         """
-        Return:
-            sine cosine positional encoding matrix
+        Args:
+            seq_len: Optional sequence length. If None, returns full positional encoding.
+        
+        Returns:
+            Sine cosine positional encoding matrix of shape (seq_len, 1, embedding_dim)
         """
-        return self.pe[:self.max_length]
+        if seq_len is None:
+            seq_len = self.max_length
+        return self.pe[:seq_len]
 
 
 class PositionEncodingEmbedding(nn.Module):
@@ -63,7 +69,7 @@ class PositionEncodingEmbedding(nn.Module):
         vocab_size    -- The number of unique tokens in the vocabulary
         embedding_dim -- dimension of the embedding that this function will output
         max_length    -- Maximum length of the sequence
-        dropout_prob  -- probability of decativating neurons randomly
+        dropout_prob  -- probability of deactivating neurons randomly
         device        -- Device that the operations should run on (cpu | cuda)
         """        
         super(PositionEncodingEmbedding, self).__init__()
@@ -76,31 +82,34 @@ class PositionEncodingEmbedding(nn.Module):
         self.dropout_prob = dropout_prob
         
         # Layers
-        self.position_embedding = SineCosineEncoding(d_model=embedding_dim, max_length=max_length)
+        self.position_embedding = SineCosineEncoding(embedding_dim=embedding_dim, max_length=max_length)
         self.word_embedding = torch.nn.Embedding(vocab_size, embedding_dim)
         self.dropout = torch.nn.Dropout(dropout_prob)
         
-    def forward(self, x: int, pos: int):
+    def forward(self, x, **kwargs):
         """
-        Create an embedding that contains the embedded input word and the coordinates
+        Create an embedding that contains the embedded input word and sine-cosine position encoding
         
-        Keyword arguments:
-        x   -- The indices of the tokens in the input sequence
-        pos -- the positions (integers from 1 to max_length) of the input tokens
+        Args:
+            x: The indices of the tokens in the input sequence, shape (batch_size, seq_len)
 
         Returns:
-        This functions returns an embedding that contains the information aboout a token and its position        
+            Embedding with word and positional information, shape (batch_size, seq_len, embedding_dim)
         """
-        # Run the input token through the embedding layer and then add the position encoding to it
-        return self.dropout(
-            self.word_embedding(x) +
-            self.position_embedding.forward()
-        )
+        # Extract batch size and sequence length from input
+        batch_size, seq_len = x.shape
+        # Get word embeddings
+        word_emb = self.word_embedding(x)
+        # Get positional encoding and reshape to match word embeddings
+        pos_enc = self.position_embedding.forward(seq_len).squeeze(1)  # (seq_len, embedding_dim)
+        pos_enc = pos_enc.unsqueeze(0).expand(batch_size, -1, -1)  # (batch_size, seq_len, embedding_dim)
+        # Add word embeddings and positional encoding
+        return self.dropout(word_emb + pos_enc)
 
 
 class LearnedPositionEmbedding(nn.Module):
     """
-    Module that learnes a word embedding and a position embedding and adds them
+    Module that learns a word embedding and a position embedding and adds them
     """
     def __init__(
         self,
@@ -115,7 +124,7 @@ class LearnedPositionEmbedding(nn.Module):
         Keyword arguments:
         vocab_size    -- The number of unique tokens in the vocabulary
         embedding_dim -- dimension of the embedding that this function will output
-        dropout_prob  -- probability of decativating neurons randomly
+        dropout_prob  -- probability of deactivating neurons randomly
         device        -- Device that the operations should run on (cpu | cuda)
         """        
         super(LearnedPositionEmbedding, self).__init__()
@@ -140,7 +149,7 @@ class LearnedPositionEmbedding(nn.Module):
         x           -- The index of the token in the sequence
 
         Returns:
-        This functions returns an embedding that contains the information aboout a token and its position        
+            Embedding with word and positional information, shape (batch_size, seq_len, embedding_dim)
         """
         # Extract batch size and sequence length from input
         batch_size, seq_len = x.shape
