@@ -6,6 +6,7 @@ This repository provides models for training deep neural networks on sequential 
 
 - RNN-based sequence-to-sequence models (LSTM, GRU, RNN)
 - Transformer models (Encoder, Decoder, Encoder-Decoder)
+- **State Space Models** - Efficient sequence classification with state space models
 - **HuggingFace Datasets integration** - Use datasets from the HuggingFace Hub with the models in this repository
 - Custom dataset classes for text classification compatible with HuggingFace
 
@@ -86,6 +87,77 @@ predictor.train(
     lr=lr,
 )
 ```
+
+## State Space Models for Sequence Classification
+
+State Space Models (SSMs) offer an efficient alternative to Transformers and RNNs for sequence modeling. They are based on continuous-time state space equations discretized for sequence processing.
+
+### Key Advantages
+
+- **Efficiency**: Linear-time complexity compared to quadratic for Transformers
+- **Long sequences**: Better at handling long-range dependencies than RNNs
+- **Simplicity**: Simpler architecture than attention mechanisms
+
+### Usage Example
+
+```python
+import torch
+from models.state_space import StateSpaceModel
+from torch.utils.data import DataLoader
+
+# Set hyperparameters
+vocab_size = 10000
+num_classes = 5
+embedding_dim = 64
+d_state = 32
+num_layers = 4
+max_length = 512
+batch_size = 32
+
+# Create the model
+model = StateSpaceModel(
+    vocab_size=vocab_size,
+    num_classes=num_classes,
+    embedding_dim=embedding_dim,
+    d_state=d_state,
+    num_layers=num_layers,
+    max_length=max_length,
+    pooling='mean',  # Options: 'mean', 'max', 'last', 'cls'
+    device='cuda' if torch.cuda.is_available() else 'cpu'
+)
+
+# Prepare your data
+dataloader = DataLoader(your_dataset, batch_size=batch_size, shuffle=True)
+
+# Training loop
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+criterion = torch.nn.CrossEntropyLoss()
+
+for epoch in range(num_epochs):
+    for sequences, labels in dataloader:
+        optimizer.zero_grad()
+        outputs = model(sequences)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+```
+
+### Pooling Strategies
+
+The State Space Model supports different pooling strategies for sequence classification:
+
+- `'mean'`: Average pooling over the sequence (default)
+- `'max'`: Max pooling over the sequence
+- `'last'`: Use the last token's representation
+- `'cls'`: Use the first token (CLS token style)
+
+### Complete Example
+
+See the `State Space Model Training.ipynb` notebook for a complete example including:
+- Model initialization and configuration
+- Training on a synthetic dataset
+- Evaluation and visualization
+- Comparison of different pooling methods
 
 ## HuggingFace Datasets Integration
 
