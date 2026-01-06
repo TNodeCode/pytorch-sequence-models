@@ -35,7 +35,9 @@ class CausalConv1D(nn.Module):
 
     def forward(self, x):
         x = self.conv(x)
-        return x[:, :, :-self.padding]
+        if self.padding > 0:
+            return x[:, :, :-self.padding]
+        return x
 
 
 class sLSTMblock(nn.Module):
@@ -47,7 +49,7 @@ class sLSTMblock(nn.Module):
         
         self.ln = nn.LayerNorm(self.input_size)
         
-        self.conv = CausalConv1D(self.input_size, self.input_size, int(self.input_size/8))
+        self.conv = CausalConv1D(self.input_size, self.input_size, max(1, int(self.input_size/8)))
         self.drop = nn.Dropout(dropout)
         
         self.i_gate = BlockDiagonal(self.input_size, self.input_size, num_layers)
@@ -80,10 +82,10 @@ class sLSTMblock(nn.Module):
         self.init_states()
         
     def init_states(self):
-        self.nt_1 = torch.zeros(1, 1, self.embedding_dim, device=self.device)
-        self.ct_1 = torch.zeros(1, 1, self.embedding_dim, device=self.device)
-        self.ht_1 = torch.zeros(1, 1, self.embedding_dim, device=self.device)
-        self.mt_1 = torch.zeros(1, 1, self.embedding_dim, device=self.device)
+        self.nt_1 = torch.zeros(1, 1, self.input_size, device=self.device)
+        self.ct_1 = torch.zeros(1, 1, self.input_size, device=self.device)
+        self.ht_1 = torch.zeros(1, 1, self.input_size, device=self.device)
+        self.mt_1 = torch.zeros(1, 1, self.input_size, device=self.device)
         
     def forward(self, x):
         x = self.ln(x)
@@ -101,8 +103,8 @@ class sLSTMblock(nn.Module):
         f = torch.exp(torch.log(f) + self.mt_1[:, 0, :].unsqueeze(1)-m)
         self.mt_1 = m.detach()
         
-        o = torch.sigmoid( self.ln_o(self.o_gate(x) + self.ro_gate(ht_1) ) )
-        z = torch.tanh( self.ln_z(self.z_gate(x) + self.rz_gate(ht_1) ) )
+        o = torch.sigmoid( self.ln_o(self.o_gate(x_conv) + self.ro_gate(ht_1) ) )
+        z = torch.tanh( self.ln_z(self.z_gate(x_conv) + self.rz_gate(ht_1) ) )
         
         ct_1 = self.ct_1
         ct = f*ct_1 + i*z
@@ -141,7 +143,7 @@ class mLSTMblock(nn.Module):
         self.left = nn.Linear(self.embedding_dim, self.hidden_size)
         self.right = nn.Linear(self.embedding_dim, self.hidden_size)
         
-        self.conv = CausalConv1D(self.hidden_size, self.hidden_size, int(self.embedding_dim/10)) 
+        self.conv = CausalConv1D(self.hidden_size, self.hidden_size, max(1, int(self.embedding_dim/10))) 
         self.drop = nn.Dropout(dropout+0.1)
         
         self.lskip = nn.Linear(self.hidden_size, self.hidden_size)
@@ -209,7 +211,7 @@ class mLSTMblock(nn.Module):
         nt =torch.mean( self.ln_n(nt), [0, 1], keepdim=True)
         self.nt_1 = nt.detach()
         
-        ht = o * ((ct*q) / torch.max(nt*q))
+        ht = o * ((ct*q) / torch.max(torch.abs(nt*q) + 1e-6, dim=-1, keepdim=True)[0])
         # end mLSTM
         ht = ht
         
@@ -250,11 +252,9 @@ class xLSTM(nn.Module):
         [l.init_states() for l in self.layers]
         
     def forward(self, x):
-        x_original = x.clone()
-        # Run through layer and add original tensor (skip connection)
+        # Run through layers with residual connections
         for l in self.layers:
-             x = l(x) + x_original
-
+            x = l(x) + x
         return x
     
 
