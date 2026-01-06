@@ -2,6 +2,13 @@
 
 This repository provides models for training deep neural networks on sequential data.
 
+## Features
+
+- RNN-based sequence-to-sequence models (LSTM, GRU, RNN)
+- Transformer models (Encoder, Decoder, Encoder-Decoder)
+- **HuggingFace Datasets integration** - Use datasets from the HuggingFace Hub with the models in this repository
+- Custom dataset classes for text classification compatible with HuggingFace
+
 ## Sequence to Sequence Modelling with RNNs
 
 You can use this repository for training an encoder-decoder RNN model that can be used for sequence-to-sequence modelling. Typical use cases are:
@@ -79,3 +86,57 @@ predictor.train(
     lr=lr,
 )
 ```
+
+## HuggingFace Datasets Integration
+
+This repository now supports the HuggingFace Datasets library, allowing you to use datasets from the HuggingFace Hub with the models in this repository.
+
+### Using HuggingFace Datasets
+
+You can use any HuggingFace dataset with the models by using the `HuggingFaceDatasetAdapter`:
+
+```python
+from datasets import load_dataset
+from dataset.huggingface_dataset import HuggingFaceDatasetAdapter
+from torch.utils.data import DataLoader
+
+# Load a dataset from HuggingFace Hub
+hf_dataset = load_dataset("your_dataset_name", split="train")
+
+# Wrap it with the adapter
+adapted_dataset = HuggingFaceDatasetAdapter(
+    hf_dataset=hf_dataset,
+    input_column='input_ids',
+    target_column='labels'
+)
+
+# Use with PyTorch DataLoader
+dataloader = DataLoader(adapted_dataset, batch_size=32, shuffle=True)
+```
+
+### Creating Custom Text Classification Datasets
+
+You can create custom datasets for text classification that are compatible with both PyTorch and HuggingFace:
+
+```python
+from dataset.huggingface_dataset import HuggingFaceSequenceClassificationDataset
+
+# Create a custom dataset
+dataset = HuggingFaceSequenceClassificationDataset(
+    sequences=your_tokenized_sequences,  # List of token ID sequences
+    labels=your_labels,                   # List of labels
+    max_length=512,
+    pad_token_id=0
+)
+
+# Convert to HuggingFace format if needed
+hf_dataset = dataset.to_huggingface_dataset()
+```
+
+### Complete Example
+
+See the `HuggingFace Datasets Example.ipynb` notebook for a complete example of:
+- Using the HuggingFace dataset adapter
+- Creating custom text classification datasets
+- Training models with HuggingFace datasets
+
