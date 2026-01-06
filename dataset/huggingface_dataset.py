@@ -75,10 +75,16 @@ class HuggingFaceDatasetAdapter(Dataset):
     def vocab_in_size(self):
         """
         Returns the input vocabulary size if available.
+        
+        Note: This works automatically for classification features with num_classes.
+        For sequence features (token IDs), this returns None by default.
+        If needed, compute vocabulary size manually by finding max(token_ids) + 1
+        across your dataset.
         """
         if hasattr(self.hf_dataset, 'features'):
             if self.input_column in self.hf_dataset.features:
                 feature = self.hf_dataset.features[self.input_column]
+                # For classification features
                 if hasattr(feature, 'num_classes'):
                     return feature.num_classes
         return None
@@ -87,10 +93,16 @@ class HuggingFaceDatasetAdapter(Dataset):
     def vocab_out_size(self):
         """
         Returns the output vocabulary size if available.
+        
+        Note: This works automatically for classification features with num_classes.
+        For sequence features (token IDs), this returns None by default.
+        If needed, compute vocabulary size manually by finding max(token_ids) + 1
+        across your dataset.
         """
         if self.target_column and hasattr(self.hf_dataset, 'features'):
             if self.target_column in self.hf_dataset.features:
                 feature = self.hf_dataset.features[self.target_column]
+                # For classification features
                 if hasattr(feature, 'num_classes'):
                     return feature.num_classes
         return None
