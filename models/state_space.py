@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.embedding import EmbeddingType
-from models.classifier import Classifier
 
 
 class StateSpaceLayer(nn.Module):
@@ -241,7 +239,8 @@ class StateSpaceModel(nn.Module):
         elif self.pooling == 'last':
             if mask is not None:
                 # Get the last non-masked position for each sequence
-                lengths = mask.sum(dim=1) - 1
+                # Clamp to prevent out-of-bounds when all tokens are masked
+                lengths = torch.clamp(mask.sum(dim=1) - 1, min=0)
                 return x[torch.arange(x.size(0), device=x.device), lengths]
             else:
                 return x[:, -1, :]
@@ -264,6 +263,13 @@ class StateSpaceModel(nn.Module):
             Logits tensor of shape (batch_size, num_classes)
         """
         batch_size, seq_len = x.shape[:2]
+        
+        # Validate sequence length
+        if self.use_embedding and seq_len > self.max_length:
+            raise ValueError(
+                f"Sequence length ({seq_len}) exceeds maximum length ({self.max_length}). "
+                f"Please set max_length >= {seq_len} when creating the model."
+            )
         
         # Embedding
         if self.use_embedding and self.embedding is not None:
@@ -364,6 +370,13 @@ class StateSpaceEncoder(nn.Module):
             Encoded tensor of shape (batch_size, seq_len, embedding_dim)
         """
         batch_size, seq_len = x.shape[:2]
+        
+        # Validate sequence length
+        if self.use_embedding and seq_len > self.max_length:
+            raise ValueError(
+                f"Sequence length ({seq_len}) exceeds maximum length ({self.max_length}). "
+                f"Please set max_length >= {seq_len} when creating the model."
+            )
         
         # Embedding
         if self.use_embedding and self.embedding is not None:
