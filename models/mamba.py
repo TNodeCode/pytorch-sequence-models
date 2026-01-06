@@ -31,7 +31,8 @@ class SelectiveSSM(nn.Module):
         )
         
         # SSM parameters (input-dependent)
-        self.x_proj = nn.Linear(self.d_inner, d_state + d_state + self.d_inner, bias=False)
+        # Projects to: delta (d_state), B (d_state), C (d_inner)
+        self.x_proj = nn.Linear(self.d_inner, 2 * d_state + self.d_inner, bias=False)
         
         # SSM state initialization
         self.dt_proj = nn.Linear(d_state, self.d_inner, bias=True)
@@ -54,10 +55,11 @@ class SelectiveSSM(nn.Module):
         x_conv = F.silu(x_conv)
         
         # SSM parameters from input
-        ssm_params = self.x_proj(x_conv)  # (B, L, d_state + d_state + d_inner)
+        ssm_params = self.x_proj(x_conv)  # (B, L, 2 * d_state + d_inner)
         delta, B, C = ssm_params.split([self.d_state, self.d_state, self.d_inner], dim=-1)
         
         # Discretization
+        # delta starts as (B, L, d_state) and is projected to (B, L, d_inner)
         delta = F.softplus(self.dt_proj(delta))  # (B, L, d_inner)
         
         # Selective scan (simplified version)
@@ -90,8 +92,10 @@ class SelectiveSSM(nn.Module):
             B_t = B[:, t, :]  # (B, d_state)
             C_t = C[:, t, :]  # (B, d_inner)
             
-            # Update state: h_t = delta_t * h_{t-1} + B_t * x_t
-            # Simplified: we use broadcasting and element-wise operations
+            # Update state: h_t = δ_t ⊙ h_{t-1} + B_t ⊗ x_t
+            # where ⊙ is element-wise multiplication and ⊗ is outer product
+            # h: (B, d_state, d_inner), delta_t: (B, d_inner), B_t: (B, d_state), x_t: (B, d_inner)
+            # Broadcasting: delta_t.unsqueeze(1) -> (B, 1, d_inner), B_t.unsqueeze(2) -> (B, d_state, 1)
             h = h * delta_t.unsqueeze(1) + B_t.unsqueeze(2) * x_t.unsqueeze(1)
             
             # Output: y_t = C_t * sum(h_t)
@@ -214,92 +218,6 @@ class Mamba(nn.Module):
         return output
 
 
-class MambaEncoder(nn.Module):
-    """
-    Mamba encoder for sequence-to-sequence tasks.
-    Similar to PyTorchTransformerEncoder but using Mamba blocks.
-    """
-    def __init__(
-        self,
-        embedding_type,
-        src_vocab_size,
-        trg_vocab_size,
-        embedding_dim=256,
-        d_state=16,
-        d_conv=4,
-        expand_factor=2,
-        num_layers=4,
-        dropout=0.1,
-        device="cuda",
-        max_length=512,
-        **kwargs
-    ):
-        super().__init__()
-        self.device = device
-        self.embedding_type = embedding_type
-        self.embedding_dim = embedding_dim
-        self.num_layers = num_layers
-        self.max_length = max_length
-        
-        # Embedding layer
-        if embedding_type == EmbeddingType.NONE:
-            self.embedding = None
-        else:
-            self.embedding = EmbeddingType.embedding_layer(embedding_type)(
-                vocab_size=src_vocab_size,
-                embedding_dim=embedding_dim,
-                dropout_prob=dropout,
-                max_length=max_length,
-                device=device
-            )
-        
-        # Stack of Mamba blocks
-        self.layers = nn.ModuleList([
-            MambaBlock(
-                d_model=embedding_dim,
-                d_state=d_state,
-                d_conv=d_conv,
-                expand_factor=expand_factor,
-                dropout=dropout
-            )
-            for _ in range(num_layers)
-        ])
-        
-        # Final normalization
-        self.norm = nn.LayerNorm(embedding_dim)
-        
-        # Classification head
-        self.cls = Classifier(
-            trg_vocab_size=trg_vocab_size,
-            embedding_dim=embedding_dim,
-            softmax_dim=2
-        )
-        
-    def forward(self, src, mask=None):
-        """
-        Forward pass through the Mamba encoder.
-        
-        Args:
-            src: Input tensor of shape (batch_size, seq_len) with token indices
-            mask: Optional mask (kept for API compatibility)
-        
-        Returns:
-            Output logits of shape (batch_size, seq_len, trg_vocab_size)
-        """
-        # Get embeddings
-        if self.embedding is not None:
-            x = self.embedding(src)
-        else:
-            x = src
-        
-        # Apply Mamba blocks
-        for layer in self.layers:
-            x = layer(x)
-        
-        # Final normalization
-        x = self.norm(x)
-        
-        # Classification
-        output = self.cls(x)
-        
-        return output
+# Alias for consistency with existing model naming conventions
+# (e.g., PyTorchTransformerEncoder in transformer.py)
+MambaEncoder = Mamba

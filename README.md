@@ -101,7 +101,7 @@ from models.mamba import MambaEncoder
 from torch.utils.data import DataLoader
 
 # Set up device
-device = "cuda" if torch.cuda.device_count() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Create Mamba model
 model = MambaEncoder(
