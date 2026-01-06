@@ -5,16 +5,33 @@ from models.classifier import Classifier
 
 
 class PyTorchTransformer(nn.Module):
+    """
+    Encoder-Decoder Transformer model for sequence-to-sequence tasks.
+    
+    This model uses PyTorch's built-in Transformer implementation with custom embeddings
+    and a classification head. Suitable for tasks like machine translation where both
+    input and output sequences are processed.
+    
+    Args:
+        embedding_type: Type of embedding to use (EmbeddingType.POS_LEARNED, EmbeddingType.SINE_COSINE, or EmbeddingType.NONE)
+        src_vocab_size: Size of source vocabulary
+        trg_vocab_size: Size of target vocabulary
+        embedding_dim: Dimension of embeddings (default: 256)
+        num_layers: Number of encoder and decoder layers (default: 6)
+        dim_feedforward: Dimension of feedforward network (default: 2048)
+        heads: Number of attention heads (default: 8)
+        dropout: Dropout probability (default: 0.1)
+        device: Device to run model on (default: "cuda")
+        max_length: Maximum sequence length (default: 100)
+    """
     def __init__(
         self,
         embedding_type,
         src_vocab_size,
         trg_vocab_size,
-        src_pad_idx,
-        trg_pad_idx,
         embedding_dim=256,
         num_layers=6,
-        forward_expansion=4,
+        dim_feedforward=2048,
         heads=8,
         dropout=0.1,
         device="cuda",
@@ -51,6 +68,7 @@ class PyTorchTransformer(nn.Module):
             nhead=heads,
             num_encoder_layers=num_layers,
             num_decoder_layers=num_layers,
+            dim_feedforward=dim_feedforward,
             dropout=dropout,
             batch_first=True
         )
@@ -85,6 +103,25 @@ class PyTorchTransformer(nn.Module):
     
 
 class PyTorchTransformerEncoder(nn.Module):
+    """
+    Transformer Encoder model for sequence classification tasks.
+    
+    This model uses PyTorch's TransformerEncoder with custom embeddings and a classification head.
+    Suitable for tasks like text classification, sentiment analysis, or sequence tagging where
+    only the input sequence needs to be encoded.
+    
+    Args:
+        embedding_type: Type of embedding to use (EmbeddingType.POS_LEARNED, EmbeddingType.SINE_COSINE, or EmbeddingType.NONE)
+        src_vocab_size: Size of source vocabulary
+        trg_vocab_size: Size of target vocabulary (output classes)
+        embedding_dim: Dimension of embeddings (default: 256)
+        dim_feedforward: Dimension of feedforward network (default: 2048)
+        num_layers: Number of encoder layers (default: 6)
+        heads: Number of attention heads (default: 8)
+        dropout: Dropout probability (default: 0.1)
+        device: Device to run model on (default: "cuda")
+        max_length: Maximum sequence length (default: 100)
+    """
     def __init__(
         self,
         embedding_type,
@@ -124,7 +161,7 @@ class PyTorchTransformerEncoder(nn.Module):
         self.encoder_layer = nn.TransformerEncoderLayer(
             d_model=self.embedding_dim,
             nhead=self.heads,
-            dim_feedforward=2048,
+            dim_feedforward=self.dim_feedforward,
             dropout=self.dropout,
             batch_first=True
         )
@@ -155,17 +192,33 @@ class PyTorchTransformerEncoder(nn.Module):
 
 
 class PyTorchTransformerDecoder(nn.Module):
+    """
+    Transformer Decoder model for sequence generation tasks.
+    
+    This model uses PyTorch's TransformerDecoder with custom embeddings and a classification head.
+    The decoder attends to encoded memory (source) while generating the target sequence.
+    Suitable for tasks where you need autoregressive decoding conditioned on source input.
+    
+    Args:
+        embedding_type: Type of embedding to use (EmbeddingType.POS_LEARNED, EmbeddingType.SINE_COSINE, or EmbeddingType.NONE)
+        src_vocab_size: Size of source vocabulary
+        trg_vocab_size: Size of target vocabulary
+        embedding_dim: Dimension of embeddings (default: 256)
+        dim_feedforward: Dimension of feedforward network (default: 2048)
+        num_layers: Number of decoder layers (default: 6)
+        heads: Number of attention heads (default: 8)
+        dropout: Dropout probability (default: 0.1)
+        device: Device to run model on (default: "cuda")
+        max_length: Maximum sequence length (default: 100)
+    """
     def __init__(
         self,
         embedding_type,
         src_vocab_size,
         trg_vocab_size,
-        src_pad_idx,
-        trg_pad_idx,
         embedding_dim=256,
         dim_feedforward=2048,
         num_layers=6,
-        forward_expansion=4,
         heads=8,
         dropout=0.1,
         device="cuda",

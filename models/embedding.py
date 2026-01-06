@@ -76,7 +76,7 @@ class PositionEncodingEmbedding(nn.Module):
         self.dropout_prob = dropout_prob
         
         # Layers
-        self.position_embedding = SineCosineEncoding(d_model=embedding_dim, max_length=max_length)
+        self.position_embedding = SineCosineEncoding(embedding_dim=embedding_dim, max_length=max_length)
         self.word_embedding = torch.nn.Embedding(vocab_size, embedding_dim)
         self.dropout = torch.nn.Dropout(dropout_prob)
         
