@@ -69,7 +69,7 @@ class PositionEncodingEmbedding(nn.Module):
         vocab_size    -- The number of unique tokens in the vocabulary
         embedding_dim -- dimension of the embedding that this function will output
         max_length    -- Maximum length of the sequence
-        dropout_prob  -- probability of decativating neurons randomly
+        dropout_prob  -- probability of deactivating neurons randomly
         device        -- Device that the operations should run on (cpu | cuda)
         """        
         super(PositionEncodingEmbedding, self).__init__()
@@ -109,7 +109,7 @@ class PositionEncodingEmbedding(nn.Module):
 
 class LearnedPositionEmbedding(nn.Module):
     """
-    Module that learnes a word embedding and a position embedding and adds them
+    Module that learns a word embedding and a position embedding and adds them
     """
     def __init__(
         self,
@@ -124,7 +124,7 @@ class LearnedPositionEmbedding(nn.Module):
         Keyword arguments:
         vocab_size    -- The number of unique tokens in the vocabulary
         embedding_dim -- dimension of the embedding that this function will output
-        dropout_prob  -- probability of decativating neurons randomly
+        dropout_prob  -- probability of deactivating neurons randomly
         device        -- Device that the operations should run on (cpu | cuda)
         """        
         super(LearnedPositionEmbedding, self).__init__()
@@ -149,7 +149,7 @@ class LearnedPositionEmbedding(nn.Module):
         x           -- The index of the token in the sequence
 
         Returns:
-        This functions returns an embedding that contains the information aboout a token and its position        
+            Embedding with word and positional information, shape (batch_size, seq_len, embedding_dim)
         """
         # Extract batch size and sequence length from input
         batch_size, seq_len = x.shape
